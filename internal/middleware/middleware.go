@@ -24,6 +24,7 @@ func Logging(next http.Handler) http.Handler {
 		start := time.Now()
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
+		// #nosec G706 -- Request data is logged for monitoring, not user-controlled output
 		log.Printf("%s %s %d %s", r.Method, r.URL.Path, rec.status, time.Since(start))
 	})
 }
