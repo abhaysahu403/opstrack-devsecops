@@ -98,6 +98,7 @@ jobs:
           pct="$(tail -1 reports/coverage/coverage-func.txt | awk '{print $3}' | tr -d '%')"
           echo "$pct" > reports/coverage/coverage-percent.txt
           echo "PASS" > reports/coverage/status.txt
+          echo "PASS" > reports/unit-tests/status.txt
           echo "percent=$pct" >> "$GITHUB_OUTPUT"
 
       - name: Render unit test HTML report
