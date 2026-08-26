@@ -67,7 +67,8 @@ jobs:
             target_base="${name#reports-}"
             
             # Special case: reports-test contains coverage/ and unit-tests/ directly
-            if [ "$target_base" = "-test" ]; then
+            if [ "$name" = "reports-test" ]; then
+              echo "Copying test reports directly to reports/"
               cp -r "$d"/* reports/ 2>/dev/null || true
             else
               # Other artifacts: copy to named subdirectory
@@ -76,7 +77,8 @@ jobs:
               cp -r "$d"/* "$target"/ 2>/dev/null || true
             fi
           done
-          find reports -maxdepth 2 -type d | sort
+          echo "Final structure:"
+          find reports -maxdepth 2 | sort
 
       - name: Determine overall build status
         id: status
