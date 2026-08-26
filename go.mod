@@ -2,7 +2,7 @@ module github.com/example/opstrack
 
 go 1.22
 
-require github.com/jackc/pgx/v5 v5.5.5
+require github.com/jackc/pgx/v5 v5.9.2
 
 require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
