@@ -69,17 +69,24 @@ jobs:
             name="$(basename "$d")"
             target_base="${name#reports-}"
             
+            echo "DEBUG: Processing artifact directory: $d"
+            echo "DEBUG: name=$name, target_base=$target_base"
+            ls -la "$d" | head -20
+            
             # Special case: reports-test contains coverage/ and unit-tests/ directly
             if [ "$target_base" = "-test" ]; then
+              echo "DEBUG: Matched -test, copying contents directly to reports/"
               cp -r "$d"/* reports/ 2>/dev/null || true
             else
+              echo "DEBUG: Creating subdirectory reports/$target_base"
               # Other artifacts: copy to named subdirectory
               target="reports/$target_base"
               mkdir -p "$target"
               cp -r "$d"/* "$target"/ 2>/dev/null || true
             fi
           done
-          find reports -maxdepth 2 -type d | sort
+          echo "DEBUG: Final structure:"
+          find reports -maxdepth 2 -type f | sort
 
       - name: Determine overall build status
         id: status
