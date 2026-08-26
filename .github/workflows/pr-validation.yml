@@ -25,11 +25,11 @@ concurrency:
 jobs:
   test:
     name: Test
-    uses: ./.github/workflows/reusable/test.yml
+    uses: ./.github/workflows/reusable-test.yml
 
   security:
     name: Security & Quality
-    uses: ./.github/workflows/reusable/security.yml
+    uses: ./.github/workflows/reusable-security.yml
     with:
       trivy-fail-on-critical-high: false
     secrets:
@@ -39,7 +39,7 @@ jobs:
 
   docker:
     name: Docker Build & Scan
-    uses: ./.github/workflows/reusable/docker.yml
+    uses: ./.github/workflows/reusable-docker.yml
     with:
       push-image: false
       trivy-fail-on-critical-high: false

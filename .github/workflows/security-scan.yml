@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   security:
-    uses: ./.github/workflows/reusable/security.yml
+    uses: ./.github/workflows/reusable-security.yml
     with:
       trivy-fail-on-critical-high: ${{ github.event.inputs.trivy-fail-on-critical-high == 'true' }}
     secrets:

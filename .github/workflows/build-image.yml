@@ -20,6 +20,6 @@ permissions:
 
 jobs:
   docker:
-    uses: ./.github/workflows/reusable/docker.yml
+    uses: ./.github/workflows/reusable-docker.yml
     with:
       push-image: ${{ github.event.inputs.push-image == 'true' }}
