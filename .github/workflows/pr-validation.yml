@@ -65,16 +65,11 @@ jobs:
           for d in artifacts/reports-*/; do
             name="$(basename "$d")"
             target_base="${name#reports-}"
+            
             # Check if artifact contains a reports/ subdirectory (from test job)
             if [ -d "$d/reports" ]; then
-              # Copy contents from nested reports/ directory
-              for subdir in "$d/reports"/*; do
-                if [ -d "$subdir" ]; then
-                  target="reports/$(basename "$subdir")"
-                  mkdir -p "$target"
-                  cp -r "$subdir"/* "$target"/ 2>/dev/null || true
-                fi
-              done
+              # Copy contents directly from nested reports/ to main reports/
+              cp -r "$d/reports"/* reports/ 2>/dev/null || true
             else
               # Copy directly (from security/docker jobs)
               target="reports/$target_base"
