@@ -121,9 +121,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: reports-test
-          path: |
-            reports/unit-tests
-            reports/coverage
+          path: reports/
           retention-days: 14
           if-no-files-found: warn
 
