@@ -1,0 +1,12 @@
+# OpsTrack Code Owners
+# These owners will be automatically requested for review when someone opens a PR
+
+# Default owner for everything in the repo
+* @abhaysahu403
+
+# Security-related files require review from security team
+internal/database/** @abhaysahu403
+internal/middleware/** @abhaysahu403
+
+# Add your friend's username here (replace with their actual GitHub username)
+# * @abhaysahu403 @your-friend-username
