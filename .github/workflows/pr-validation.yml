@@ -1,0 +1,102 @@
+name: PR Validation
+
+# Runs on every pull request targeting main:
+#   Checkout -> Setup Go -> Deps -> Format Check -> Build -> Unit Tests ->
+#   Coverage -> Go Vet -> Lint -> Gosec -> Trivy (fs) -> Snyk -> SonarQube ->
+#   Docker Build -> Trivy (image) -> Generate Reports -> Upload Artifacts ->
+#   GitHub Actions Summary.
+#
+# Reports are uploaded as a downloadable artifact. GitHub Pages is only
+# updated from main.yml on merge, so PR runs don't overwrite the published
+# dashboard before review/merge.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: pr-validation-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test
+    uses: ./.github/workflows/reusable/test.yml
+
+  security:
+    name: Security & Quality
+    uses: ./.github/workflows/reusable/security.yml
+    with:
+      trivy-fail-on-critical-high: false
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+  docker:
+    name: Docker Build & Scan
+    uses: ./.github/workflows/reusable/docker.yml
+    with:
+      push-image: false
+      trivy-fail-on-critical-high: false
+
+  assemble-reports:
+    name: Assemble Reports & Summary
+    needs: [test, security, docker]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (for report scripts)
+        uses: actions/checkout@v4
+
+      - name: Download all report artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: "reports-*"
+
+      - name: Assemble reports/ directory
+        run: |
+          mkdir -p reports
+          for d in artifacts/reports-*/; do
+            name="$(basename "$d")"
+            target="reports/${name#reports-}"
+            mkdir -p "$target"
+            cp -r "$d"/* "$target"/ 2>/dev/null || true
+          done
+          find reports -maxdepth 2 -type d | sort
+
+      - name: Determine overall build status
+        id: status
+        run: |
+          overall="PASS"
+          for r in "${{ needs.test.result }}" "${{ needs.security.result }}" "${{ needs.docker.result }}"; do
+            if [ "$r" != "success" ]; then overall="FAIL"; fi
+          done
+          echo "overall=$overall" >> "$GITHUB_OUTPUT"
+
+      - name: Generate dashboard
+        run: bash scripts/generate-report-dashboard.sh reports "${{ steps.status.outputs.overall }}"
+
+      - name: Generate ZIP artifact
+        run: bash scripts/generate-zip.sh reports reports/opstrack-ci-reports.zip
+
+      - name: Write GitHub Actions summary
+        run: bash scripts/write-step-summary.sh reports "" "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+      - name: Upload combined reports artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opstrack-ci-reports-pr-${{ github.event.pull_request.number }}
+          path: reports
+          retention-days: 14
+
+      - name: Fail the job if any stage failed
+        if: steps.status.outputs.overall == 'FAIL'
+        run: |
+          echo "One or more required stages failed - see the reports artifact and job logs above."
+          exit 1

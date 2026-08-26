@@ -1,0 +1,122 @@
+name: Main Branch Pipeline
+
+# Runs when code is merged into main:
+#   Checkout -> Build -> Tests -> Security Validation -> Docker Build ->
+#   Tag Image -> Publish Image (GHCR) -> Generate Reports ->
+#   Publish GitHub Pages.
+#
+# GCP/Terraform deployment is intentionally out of scope for this build -
+# see docs/demo-guide.md and README > Deployment for how to add it back.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: main-pipeline
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Test
+    uses: ./.github/workflows/reusable/test.yml
+
+  security:
+    name: Security & Quality
+    uses: ./.github/workflows/reusable/security.yml
+    with:
+      trivy-fail-on-critical-high: false
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+  docker:
+    name: Docker Build, Scan & Publish
+    needs: [test, security]
+    uses: ./.github/workflows/reusable/docker.yml
+    with:
+      push-image: true
+      trivy-fail-on-critical-high: false
+
+  assemble-reports:
+    name: Assemble Reports & Summary
+    needs: [test, security, docker]
+    if: always()
+    runs-on: ubuntu-latest
+    outputs:
+      overall: ${{ steps.status.outputs.overall }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all report artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: "reports-*"
+
+      - name: Assemble reports/ directory
+        run: |
+          mkdir -p reports
+          for d in artifacts/reports-*/; do
+            name="$(basename "$d")"
+            target="reports/${name#reports-}"
+            mkdir -p "$target"
+            cp -r "$d"/* "$target"/ 2>/dev/null || true
+          done
+          find reports -maxdepth 2 -type d | sort
+
+      - name: Determine overall build status
+        id: status
+        run: |
+          overall="PASS"
+          for r in "${{ needs.test.result }}" "${{ needs.security.result }}" "${{ needs.docker.result }}"; do
+            if [ "$r" != "success" ]; then overall="FAIL"; fi
+          done
+          echo "overall=$overall" >> "$GITHUB_OUTPUT"
+
+      - name: Generate dashboard
+        run: bash scripts/generate-report-dashboard.sh reports "${{ steps.status.outputs.overall }}"
+
+      - name: Generate ZIP artifact
+        run: bash scripts/generate-zip.sh reports reports/opstrack-ci-reports.zip
+
+      - name: Write GitHub Actions summary
+        run: |
+          bash scripts/write-step-summary.sh reports \
+            "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/" \
+            "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+      - name: Upload combined reports artifact (for GitHub Pages job)
+        uses: actions/upload-artifact@v4
+        with:
+          name: opstrack-ci-reports
+          path: reports
+          retention-days: 30
+
+  publish-pages:
+    name: Publish GitHub Pages
+    needs: assemble-reports
+    uses: ./.github/workflows/publish-reports.yml
+
+  final-status:
+    name: Final Status
+    needs: [assemble-reports, publish-pages]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail pipeline if any stage failed
+        if: needs.assemble-reports.outputs.overall == 'FAIL'
+        run: |
+          echo "One or more required stages failed on main - see the published dashboard and job logs."
+          exit 1
+      - name: Success
+        if: needs.assemble-reports.outputs.overall != 'FAIL'
+        run: |
+          echo "Main pipeline complete. Dashboard: ${{ needs.publish-pages.outputs.page_url }}"

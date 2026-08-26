@@ -1,0 +1,49 @@
+name: Publish Reports
+
+# Publishes the assembled reports/ directory (dashboard + all tool reports +
+# the downloadable ZIP) to GitHub Pages. Expects the "opstrack-ci-reports"
+# artifact - produced by main.yml's "assemble-reports" job - to already
+# exist on this workflow run.
+#
+# One-time repo setup required: Settings > Pages > Source = "GitHub Actions".
+
+on:
+  workflow_call:
+    outputs:
+      page_url:
+        description: "Published GitHub Pages URL"
+        value: ${{ jobs.deploy.outputs.page_url }}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download assembled reports
+        uses: actions/download-artifact@v4
+        with:
+          name: opstrack-ci-reports
+          path: reports
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: reports
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,25 @@
+name: Build Image
+
+# Standalone entry point for building the OpsTrack Docker image and running
+# the Trivy image scan. Runnable on demand; also invoked by main.yml on
+# every merge to main. Pushing to a registry is opt-in (see
+# reusable/docker.yml) - this prototype does not include a GCP/Terraform
+# deployment target, so it defaults to GHCR when push is enabled.
+
+on:
+  workflow_dispatch:
+    inputs:
+      push-image:
+        description: "Push the built image to GHCR"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  docker:
+    uses: ./.github/workflows/reusable/docker.yml
+    with:
+      push-image: ${{ github.event.inputs.push-image == 'true' }}

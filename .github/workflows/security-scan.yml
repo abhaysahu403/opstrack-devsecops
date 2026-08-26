@@ -1,0 +1,29 @@
+name: Security Scan
+
+# Standalone entry point for the security/quality stage (gosec, Trivy
+# filesystem scan, Snyk, SonarQube). Runs nightly and on demand so
+# dependency vulnerabilities are caught even on weeks with no PRs; it is
+# also invoked directly by pr-validation.yml and main.yml via `uses:`.
+
+on:
+  workflow_dispatch:
+    inputs:
+      trivy-fail-on-critical-high:
+        description: "Fail the run if Trivy finds CRITICAL/HIGH severity issues"
+        type: boolean
+        default: false
+  schedule:
+    - cron: "0 3 * * *" # 03:00 UTC daily
+
+permissions:
+  contents: read
+
+jobs:
+  security:
+    uses: ./.github/workflows/reusable/security.yml
+    with:
+      trivy-fail-on-critical-high: ${{ github.event.inputs.trivy-fail-on-critical-high == 'true' }}
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}

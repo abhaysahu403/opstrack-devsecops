@@ -1,0 +1,134 @@
+name: Reusable - Build & Test
+
+on:
+  workflow_call:
+    inputs:
+      run-integration-tests:
+        description: "Run the integration test suite against a real Postgres service container"
+        type: boolean
+        default: true
+    outputs:
+      coverage_percent:
+        description: "Total statement coverage percentage from go test"
+        value: ${{ jobs.test.outputs.coverage_percent }}
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION: "1.22"
+
+jobs:
+  test:
+    name: Build, Lint & Test
+    runs-on: ubuntu-latest
+    outputs:
+      coverage_percent: ${{ steps.coverage.outputs.percent }}
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: opstrack_test
+          POSTGRES_USER: opstrack
+          POSTGRES_PASSWORD: opstrack
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U opstrack -d opstrack_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: gofmt check
+        run: |
+          set -e
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "The following files are not gofmt-formatted:"
+            echo "$unformatted"
+            exit 1
+          fi
+          echo "gofmt: clean"
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build ./...
+
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@latest
+
+      - name: Run unit tests (JUnit + coverage)
+        run: |
+          mkdir -p reports/unit-tests reports/coverage
+          gotestsum --junitfile reports/unit-tests/test-results.xml --format standard-verbose -- \
+            ./... -coverprofile=coverage.out -covermode=atomic
+
+      - name: Run integration tests
+        if: inputs.run-integration-tests
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: opstrack_test
+          DB_USER: opstrack
+          DB_PASSWORD: opstrack
+          DB_SSLMODE: disable
+        run: go test -tags=integration ./tests/... -v
+
+      - name: Generate coverage report (HTML + function summary)
+        id: coverage
+        run: |
+          go tool cover -html=coverage.out -o reports/coverage/index.html
+          go tool cover -func=coverage.out | tee reports/coverage/coverage-func.txt
+          pct="$(tail -1 reports/coverage/coverage-func.txt | awk '{print $3}' | tr -d '%')"
+          echo "$pct" > reports/coverage/coverage-percent.txt
+          echo "PASS" > reports/coverage/status.txt
+          echo "percent=$pct" >> "$GITHUB_OUTPUT"
+
+      - name: Render unit test HTML report
+        if: always()
+        run: python3 scripts/junit_to_html.py --input reports/unit-tests/test-results.xml --output reports/unit-tests/index.html
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=5m
+          skip-cache: false
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-test
+          path: |
+            reports/unit-tests
+            reports/coverage
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Upload raw coverage + JUnit for SonarQube
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonar-inputs
+          path: |
+            coverage.out
+            reports/unit-tests/test-results.xml
+          retention-days: 1
+          if-no-files-found: warn
