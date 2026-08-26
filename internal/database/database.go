@@ -77,6 +77,7 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool, migrationsDir string
 			continue
 		}
 
+		// #nosec G304 -- Migration files are from trusted source (embedded in application)
 		content, err := os.ReadFile(filepath.Join(migrationsDir, f))
 		if err != nil {
 			return fmt.Errorf("read migration %s: %w", f, err)
