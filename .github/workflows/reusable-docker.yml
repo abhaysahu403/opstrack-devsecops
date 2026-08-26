@@ -35,6 +35,9 @@ jobs:
           echo "image_local=opstrack:ci" >> "$GITHUB_OUTPUT"
           echo "image_ghcr=ghcr.io/${{ github.repository }}" >> "$GITHUB_OUTPUT"
 
+      - name: Create Trivy image report directory
+        run: mkdir -p reports/trivy-image
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 

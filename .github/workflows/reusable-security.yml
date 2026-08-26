@@ -35,10 +35,12 @@ jobs:
       - name: Install gosec
         run: go install github.com/securego/gosec/v2/cmd/gosec@latest
 
+      - name: Create Gosec report directory
+        run: mkdir -p reports/gosec
+
       - name: Run gosec
         id: run
         run: |
-          mkdir -p reports/gosec
           set +e
           gosec -no-fail -fmt=json -out=reports/gosec/gosec.json ./... > /dev/null 2>reports/gosec/gosec-stderr.txt
           gosec -no-fail -fmt=text ./... > reports/gosec/gosec.txt 2>&1
@@ -69,6 +71,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Create report directories
+        run: mkdir -p reports/trivy-fs
 
       - name: Run Trivy filesystem scan (JSON)
         uses: aquasecurity/trivy-action@master
@@ -130,6 +135,9 @@ jobs:
             echo "configured=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Create Snyk report directory
+        run: mkdir -p reports/snyk
+
       - name: Run Snyk
         id: run
         if: steps.check.outputs.configured == 'true'
@@ -143,7 +151,6 @@ jobs:
       - name: Render Snyk report (configured)
         if: steps.check.outputs.configured == 'true'
         run: |
-          mkdir -p reports/snyk
           status="PASS"
           if [ "${{ steps.run.outcome }}" = "failure" ]; then status="FAIL"; fi
           summary="Snyk dependency scan complete."
