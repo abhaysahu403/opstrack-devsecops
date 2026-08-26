@@ -17,6 +17,7 @@ on:
 permissions:
   contents: read
   pull-requests: read
+  packages: write  # Required by reusable Docker workflow
 
 concurrency:
   group: pr-validation-${{ github.event.pull_request.number }}
