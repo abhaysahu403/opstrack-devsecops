@@ -71,7 +71,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Run Trivy filesystem scan (JSON)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@master
         with:
           scan-type: fs
           scan-ref: .
@@ -82,7 +82,7 @@ jobs:
 
       - name: Run Trivy filesystem scan (human-readable table + gate)
         id: gate
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@master
         with:
           scan-type: fs
           scan-ref: .
@@ -147,7 +147,9 @@ jobs:
           status="PASS"
           if [ "${{ steps.run.outcome }}" = "failure" ]; then status="FAIL"; fi
           summary="Snyk dependency scan complete."
-          [ -f reports/snyk/snyk.json ] || echo '{"note":"snyk produced no JSON output"}' > reports/snyk/snyk.json
+          if [ ! -f reports/snyk/snyk.json ]; then
+            echo '{"note":"snyk produced no JSON output"}' > reports/snyk/snyk.json
+          fi
           python3 scripts/render_report.py \
             --title "Snyk Dependency Scan" --tool snyk --status "$status" \
             --summary "$summary" --raw-link snyk.json --output reports/snyk/index.html
@@ -188,6 +190,7 @@ jobs:
 
       - name: Download coverage + JUnit inputs
         if: steps.check.outputs.configured == 'true'
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: sonar-inputs
