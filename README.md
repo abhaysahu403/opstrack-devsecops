@@ -1,5 +1,11 @@
 # OpsTrack — Incident & Service Management API
 
+[![CI/CD Pipeline](https://github.com/abhaysahu403/opstrack-devsecops/actions/workflows/main.yml/badge.svg)](https://github.com/abhaysahu403/opstrack-devsecops/actions/workflows/main.yml)
+[![Security Scan](https://github.com/abhaysahu403/opstrack-devsecops/actions/workflows/security-scan.yml/badge.svg)](https://github.com/abhaysahu403/opstrack-devsecops/actions/workflows/security-scan.yml)
+[![Go Version](https://img.shields.io/badge/Go-1.22-blue.svg)](https://golang.org/dl/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Dashboard](https://img.shields.io/badge/Dashboard-Live-brightgreen.svg)](https://abhaysahu403.github.io/opstrack-devsecops/)
+
 > **Status: Complete.** This repository contains the full Go application,
 > database layer, Docker/Compose setup, test suite, GitHub Actions
 > CI/CD pipeline, security scanning (Gosec, Trivy, Snyk, SonarQube), the HTML
@@ -369,6 +375,77 @@ branched from `main` and merged back via PR — never pushed to directly.
 
 See [`docs/demo-guide.md`](docs/demo-guide.md) for a full 10–15 minute
 walkthrough script.
+
+## 20. Live Dashboard
+
+The CI/CD reports dashboard is automatically published to GitHub Pages on every push to `main`:
+
+🔗 **[View Live Dashboard](https://abhaysahu403.github.io/opstrack-devsecops/)**
+
+The dashboard displays:
+- Overall build status (PASS/FAIL)
+- Individual stage results (Unit Tests, Coverage, Security Scans, SonarCloud, Docker)
+- Direct links to detailed HTML reports for each tool
+- Downloadable ZIP archive with all reports
+
+## 21. Key Features Demonstrated
+
+This project demonstrates a complete enterprise DevSecOps pipeline:
+
+✅ **Continuous Integration**
+- Automated testing (unit + integration tests with 80%+ coverage)
+- Code quality checks (gofmt, go vet, golangci-lint)
+- Parallel job execution for faster feedback
+
+✅ **Security as Code**
+- Multiple security scanning tools (Gosec, Trivy, Snyk, SonarCloud)
+- Filesystem and Docker image vulnerability scanning
+- Security findings tracked and reported
+
+✅ **Infrastructure as Code**
+- Docker multi-stage builds for minimal image size
+- Docker Compose for local development
+- GitHub Actions reusable workflows
+
+✅ **Quality Gates**
+- Branch protection with required status checks
+- Mandatory code review (PR approval required)
+- Automated report generation and archival
+
+✅ **Artifacts & Reports**
+- HTML reports for all stages
+- GitHub Actions Summary with embedded results
+- GitHub Pages dashboard for public visibility
+- Downloadable ZIP archive of all reports
+
+✅ **Container Registry**
+- Automated Docker image builds
+- Multi-tag strategy (`:latest` and `:git-sha`)
+- Push to GitHub Container Registry (GHCR)
+
+## 22. Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+All PRs must:
+- Pass all CI/CD checks (Test, Security, Docker)
+- Have at least one approval
+- Be up to date with `main`
+
+## 23. Known Limitations
+
+- **Deployment**: Infrastructure deployment (GCP, AWS, Azure) is not included. The pipeline stops at building and pushing the Docker image to GHCR.
+- **Snyk Vulnerability**: pgx v5.5.5 has a reported SQL injection vulnerability (SNYK-GOLANG-GITHUBCOMJACKCPGXV5-16134557), but this is a false positive for our usage since we use parameterized queries throughout. Upgrading to v5.7.1+ requires Go 1.25+.
+- **No Authentication**: The API has no authentication/authorization layer (intentional for demo simplicity).
+- **Single Region**: No multi-region deployment or high availability setup.
+
+## 24. License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
